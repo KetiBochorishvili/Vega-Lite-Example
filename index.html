@@ -1,37 +1,827 @@
 <!DOCTYPE html>
-
-<html>
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chart</title>
-    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles/index.css" />
+    <title>Vega-Lite Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.25.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.16.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.24.0"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 20px 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px 40px;
+        }
+
+        .filters-bar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-label {
+            font-size: 0.75em;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-select {
+            padding: 8px 35px 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.9em;
+            color: #1a1a1a;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .filter-select:hover {
+            border-color: #9ca3af;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .metric-label {
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .metric-change {
+            font-size: 0.85em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .metric-change.positive {
+            color: #10b981;
+        }
+
+        .metric-change.negative {
+            color: #ef4444;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .viz-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .viz-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .viz-card.col-6 {
+            grid-column: span 6;
+        }
+
+        .viz-card.col-12 {
+            grid-column: span 12;
+        }
+
+        .viz-card.col-8 {
+            grid-column: span 8;
+        }
+
+        .viz-card.col-4 {
+            grid-column: span 4;
+        }
+
+        .viz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .viz-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .viz-subtitle {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .viz-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.8em;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .action-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            color: #1a1a1a;
+        }
+
+        .viz-container {
+            width: 100%;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        @media (max-width: 1200px) {
+            .viz-card.col-6,
+            .viz-card.col-8,
+            .viz-card.col-4 {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 15px 20px;
+            }
+
+            .filters-bar {
+                padding: 15px;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Vega-Lite specific styling */
+        .vega-embed {
+            width: 100%;
+        }
+
+        .vega-embed .vega-actions {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .viz-card:hover .vega-embed .vega-actions {
+            opacity: 1;
+        }
+    </style>
 </head>
-
-<body translate="no">
-
-    <div class="page-container">
-        <div id="graph-container"></div>
+<body>
+    <div class="header">
+        <h1>📊 Sales Analytics Dashboard</h1>
+        <p>Real-time business intelligence with interactive exploration</p>
     </div>
 
-    <script src="libs/d3.v7.min.js"></script>
-    <script src="scripts/d3chart.js"></script>
+    <div class="container">
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label class="filter-label">Time Period</label>
+                <select class="filter-select" id="timeFilter">
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d" selected>Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                    <option value="1y">Last Year</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Region</label>
+                <select class="filter-select" id="regionFilter">
+                    <option value="all" selected>All Regions</option>
+                    <option value="north">North America</option>
+                    <option value="europe">Europe</option>
+                    <option value="asia">Asia Pacific</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Product Category</label>
+                <select class="filter-select" id="categoryFilter">
+                    <option value="all" selected>All Categories</option>
+                    <option value="electronics">Electronics</option>
+                    <option value="fashion">Fashion</option>
+                    <option value="home">Home & Garden</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Revenue</div>
+                <div class="metric-value">$2.4M</div>
+                <div class="metric-change positive">
+                    <span>↑</span> 12.5% vs last period
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Orders</div>
+                <div class="metric-value">8,429</div>
+                <div class="metric-change positive">
+                    <span>↑</span> 8.3% vs last period
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Average Order Value</div>
+                <div class="metric-value">$284</div>
+                <div class="metric-change negative">
+                    <span>↓</span> 2.1% vs last period
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Conversion Rate</div>
+                <div class="metric-value">3.2%</div>
+                <div class="metric-change positive">
+                    <span>↑</span> 0.4% vs last period
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="viz-card col-8">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Revenue Trend</div>
+                        <div class="viz-subtitle">Daily revenue over time with moving average</div>
+                    </div>
+                    <div class="viz-actions">
+                        <button class="action-btn">Export</button>
+                    </div>
+                </div>
+                <div id="revenueTrend" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-4">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Top Products</div>
+                        <div class="viz-subtitle">By revenue</div>
+                    </div>
+                </div>
+                <div id="topProducts" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-6">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Sales by Region</div>
+                        <div class="viz-subtitle">Geographic distribution</div>
+                    </div>
+                </div>
+                <div id="regionSales" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-6">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Category Performance</div>
+                        <div class="viz-subtitle">Revenue and order count by category</div>
+                    </div>
+                </div>
+                <div id="categoryPerformance" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-12">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Customer Segmentation Analysis</div>
+                        <div class="viz-subtitle">Revenue vs Order Frequency - Interactive scatter plot</div>
+                    </div>
+                    <div class="viz-actions">
+                        <button class="action-btn">Filter</button>
+                        <button class="action-btn">Drill Down</button>
+                    </div>
+                </div>
+                <div id="customerSegmentation" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-6">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Hourly Order Distribution</div>
+                        <div class="viz-subtitle">Peak hours analysis</div>
+                    </div>
+                </div>
+                <div id="hourlyDistribution" class="viz-container"></div>
+            </div>
+
+            <div class="viz-card col-6">
+                <div class="viz-header">
+                    <div>
+                        <div class="viz-title">Revenue Correlation Matrix</div>
+                        <div class="viz-subtitle">Cross-category relationships</div>
+                    </div>
+                </div>
+                <div id="correlationMatrix" class="viz-container"></div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        let chart;
-        d3.json('data/data.json')
-            .then(data => {
-                chart = new Chart()
-                    .svgHeight(window.innerHeight - 30)
-                    .svgWidth(window.innerWidth - 30)
-                    .container('#graph-container')
-                    .data(data)
-                    .render()
-            })
+        // Generate realistic time series data
+        function generateTimeSeriesData(days) {
+            const data = [];
+            const now = new Date();
+            const baseRevenue = 75000;
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                
+                const dayOfWeek = date.getDay();
+                const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.7 : 1;
+                const trend = 1 + (days - i) / (days * 10);
+                const random = 0.8 + Math.random() * 0.4;
+                
+                const revenue = Math.floor(baseRevenue * weekendMultiplier * trend * random);
+                const orders = Math.floor(revenue / 280 * (0.9 + Math.random() * 0.2));
+                
+                data.push({
+                    date: date.toISOString().split('T')[0],
+                    revenue: revenue,
+                    orders: orders,
+                    avgOrderValue: Math.floor(revenue / orders)
+                });
+            }
+            
+            return data;
+        }
+
+        // Generate product data
+        function generateProductData() {
+            const products = [
+                'Wireless Headphones', 'Smart Watch', 'Laptop Pro', 
+                'Gaming Console', 'Tablet', 'Smart Speaker',
+                'Fitness Tracker', 'Camera', 'Keyboard'
+            ];
+            
+            return products.map(product => ({
+                product: product,
+                revenue: Math.floor(Math.random() * 200000) + 50000,
+                orders: Math.floor(Math.random() * 800) + 200
+            })).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+        }
+
+        // Generate region data
+        function generateRegionData() {
+            const regions = ['North America', 'Europe', 'Asia Pacific', 'Latin America', 'Middle East'];
+            return regions.map(region => ({
+                region: region,
+                revenue: Math.floor(Math.random() * 500000) + 300000,
+                orders: Math.floor(Math.random() * 2000) + 1000,
+                growth: (Math.random() * 30 - 5).toFixed(1)
+            }));
+        }
+
+        // Generate category data
+        function generateCategoryData() {
+            const categories = ['Electronics', 'Fashion', 'Home & Garden', 'Sports', 'Books', 'Toys'];
+            return categories.map(category => ({
+                category: category,
+                revenue: Math.floor(Math.random() * 400000) + 200000,
+                orders: Math.floor(Math.random() * 1500) + 500
+            }));
+        }
+
+        // Generate customer segmentation data
+        function generateCustomerData() {
+            const segments = ['New', 'Active', 'VIP', 'At Risk', 'Lost'];
+            const data = [];
+            
+            segments.forEach(segment => {
+                for (let i = 0; i < 50; i++) {
+                    data.push({
+                        segment: segment,
+                        totalRevenue: Math.floor(Math.random() * 5000) + 500,
+                        orderFrequency: Math.floor(Math.random() * 20) + 1,
+                        avgOrderValue: Math.floor(Math.random() * 400) + 100
+                    });
+                }
+            });
+            
+            return data;
+        }
+
+        // Generate hourly data
+        function generateHourlyData() {
+            const data = [];
+            for (let hour = 0; hour < 24; hour++) {
+                const isPeakHour = hour >= 10 && hour <= 20;
+                const baseOrders = isPeakHour ? 350 : 150;
+                data.push({
+                    hour: hour,
+                    orders: Math.floor(baseOrders * (0.8 + Math.random() * 0.4)),
+                    hourLabel: `${hour.toString().padStart(2, '0')}:00`
+                });
+            }
+            return data;
+        }
+
+        // Generate correlation data
+        function generateCorrelationData() {
+            const categories = ['Electronics', 'Fashion', 'Home', 'Sports'];
+            const data = [];
+            
+            categories.forEach(cat1 => {
+                categories.forEach(cat2 => {
+                    const correlation = cat1 === cat2 ? 1 : (Math.random() * 0.8 - 0.2);
+                    data.push({
+                        category1: cat1,
+                        category2: cat2,
+                        correlation: correlation
+                    });
+                });
+            });
+            
+            return data;
+        }
+
+        // Data
+        const timeSeriesData = generateTimeSeriesData(30);
+        const productData = generateProductData();
+        const regionData = generateRegionData();
+        const categoryData = generateCategoryData();
+        const customerData = generateCustomerData();
+        const hourlyData = generateHourlyData();
+        const correlationData = generateCorrelationData();
+
+        // 1. Revenue Trend with Moving Average
+        const revenueTrendSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: timeSeriesData },
+            layer: [
+                {
+                    mark: { type: 'area', opacity: 0.3, color: '#3b82f6' },
+                    encoding: {
+                        x: { 
+                            field: 'date', 
+                            type: 'temporal',
+                            axis: { title: null, labelAngle: -45 }
+                        },
+                        y: { 
+                            field: 'revenue', 
+                            type: 'quantitative',
+                            axis: { title: 'Revenue ($)', format: '$,.0f' }
+                        }
+                    }
+                },
+                {
+                    mark: { type: 'line', color: '#3b82f6', strokeWidth: 2 },
+                    encoding: {
+                        x: { field: 'date', type: 'temporal' },
+                        y: { field: 'revenue', type: 'quantitative' }
+                    }
+                },
+                {
+                    mark: { type: 'line', color: '#f97316', strokeWidth: 2, strokeDash: [5, 5] },
+                    transform: [
+                        {
+                            window: [{ op: 'mean', field: 'revenue', as: 'movingAvg' }],
+                            frame: [-3, 3]
+                        }
+                    ],
+                    encoding: {
+                        x: { field: 'date', type: 'temporal' },
+                        y: { field: 'movingAvg', type: 'quantitative' }
+                    }
+                },
+                {
+                    mark: { type: 'point', filled: true, size: 40, color: '#3b82f6' },
+                    encoding: {
+                        x: { field: 'date', type: 'temporal' },
+                        y: { field: 'revenue', type: 'quantitative' },
+                        tooltip: [
+                            { field: 'date', type: 'temporal', title: 'Date' },
+                            { field: 'revenue', type: 'quantitative', title: 'Revenue', format: '$,.0f' },
+                            { field: 'orders', type: 'quantitative', title: 'Orders' }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        // 2. Top Products
+        const topProductsSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: productData },
+            mark: { type: 'bar', color: '#8b5cf6', cornerRadiusEnd: 4 },
+            encoding: {
+                y: { 
+                    field: 'product', 
+                    type: 'nominal',
+                    sort: '-x',
+                    axis: { title: null }
+                },
+                x: { 
+                    field: 'revenue', 
+                    type: 'quantitative',
+                    axis: { title: 'Revenue ($)', format: '$,.0f' }
+                },
+                tooltip: [
+                    { field: 'product', type: 'nominal', title: 'Product' },
+                    { field: 'revenue', type: 'quantitative', title: 'Revenue', format: '$,.0f' },
+                    { field: 'orders', type: 'quantitative', title: 'Orders' }
+                ]
+            }
+        };
+
+        // 3. Regional Sales
+        const regionSalesSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: regionData },
+            mark: { type: 'arc', innerRadius: 60, stroke: 'white', strokeWidth: 2 },
+            encoding: {
+                theta: { field: 'revenue', type: 'quantitative' },
+                color: { 
+                    field: 'region', 
+                    type: 'nominal',
+                    scale: {
+                        range: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
+                    },
+                    legend: { title: 'Region' }
+                },
+                tooltip: [
+                    { field: 'region', type: 'nominal', title: 'Region' },
+                    { field: 'revenue', type: 'quantitative', title: 'Revenue', format: '$,.0f' },
+                    { field: 'orders', type: 'quantitative', title: 'Orders' },
+                    { field: 'growth', type: 'quantitative', title: 'Growth %' }
+                ]
+            }
+        };
+
+        // 4. Category Performance
+        const categoryPerformanceSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: categoryData },
+            mark: { type: 'bar', cornerRadiusEnd: 4 },
+            encoding: {
+                x: { 
+                    field: 'category', 
+                    type: 'nominal',
+                    axis: { title: null, labelAngle: -45 }
+                },
+                y: { 
+                    field: 'revenue', 
+                    type: 'quantitative',
+                    axis: { title: 'Revenue ($)', format: '$,.0f' }
+                },
+                color: {
+                    field: 'orders',
+                    type: 'quantitative',
+                    scale: { scheme: 'blues' },
+                    legend: { title: 'Order Count' }
+                },
+                tooltip: [
+                    { field: 'category', type: 'nominal', title: 'Category' },
+                    { field: 'revenue', type: 'quantitative', title: 'Revenue', format: '$,.0f' },
+                    { field: 'orders', type: 'quantitative', title: 'Orders' }
+                ]
+            }
+        };
+
+        // 5. Customer Segmentation
+        const customerSegmentationSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 350,
+            data: { values: customerData },
+            mark: { type: 'circle', opacity: 0.6 },
+            encoding: {
+                x: { 
+                    field: 'orderFrequency', 
+                    type: 'quantitative',
+                    axis: { title: 'Order Frequency' },
+                    scale: { zero: false }
+                },
+                y: { 
+                    field: 'totalRevenue', 
+                    type: 'quantitative',
+                    axis: { title: 'Total Revenue ($)', format: '$,.0f' },
+                    scale: { zero: false }
+                },
+                color: { 
+                    field: 'segment', 
+                    type: 'nominal',
+                    scale: {
+                        domain: ['New', 'Active', 'VIP', 'At Risk', 'Lost'],
+                        range: ['#10b981', '#3b82f6', '#f59e0b', '#f97316', '#ef4444']
+                    },
+                    legend: { title: 'Customer Segment' }
+                },
+                size: { 
+                    field: 'avgOrderValue', 
+                    type: 'quantitative',
+                    scale: { range: [50, 500] },
+                    legend: { title: 'Avg Order Value' }
+                },
+                tooltip: [
+                    { field: 'segment', type: 'nominal', title: 'Segment' },
+                    { field: 'totalRevenue', type: 'quantitative', title: 'Total Revenue', format: '$,.0f' },
+                    { field: 'orderFrequency', type: 'quantitative', title: 'Orders' },
+                    { field: 'avgOrderValue', type: 'quantitative', title: 'Avg Order', format: '$,.0f' }
+                ]
+            }
+        };
+
+        // 6. Hourly Distribution
+        const hourlyDistributionSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: hourlyData },
+            mark: { type: 'bar', color: '#06b6d4', cornerRadiusEnd: 4 },
+            encoding: {
+                x: { 
+                    field: 'hourLabel', 
+                    type: 'nominal',
+                    axis: { title: 'Hour of Day', labelAngle: -45 }
+                },
+                y: { 
+                    field: 'orders', 
+                    type: 'quantitative',
+                    axis: { title: 'Number of Orders' }
+                },
+                tooltip: [
+                    { field: 'hourLabel', type: 'nominal', title: 'Time' },
+                    { field: 'orders', type: 'quantitative', title: 'Orders' }
+                ]
+            }
+        };
+
+        // 7. Correlation Matrix
+        const correlationMatrixSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            width: 'container',
+            height: 300,
+            data: { values: correlationData },
+            mark: { type: 'rect' },
+            encoding: {
+                x: { 
+                    field: 'category1', 
+                    type: 'nominal',
+                    axis: { title: null }
+                },
+                y: { 
+                    field: 'category2', 
+                    type: 'nominal',
+                    axis: { title: null }
+                },
+                color: { 
+                    field: 'correlation', 
+                    type: 'quantitative',
+                    scale: { 
+                        domain: [-0.5, 0, 1],
+                        range: ['#ef4444', '#f9fafb', '#10b981']
+                    },
+                    legend: { title: 'Correlation' }
+                },
+                tooltip: [
+                    { field: 'category1', type: 'nominal', title: 'Category 1' },
+                    { field: 'category2', type: 'nominal', title: 'Category 2' },
+                    { field: 'correlation', type: 'quantitative', title: 'Correlation', format: '.2f' }
+                ]
+            }
+        };
+
+        // Render all visualizations
+        vegaEmbed('#revenueTrend', revenueTrendSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#topProducts', topProductsSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#regionSales', regionSalesSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#categoryPerformance', categoryPerformanceSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#customerSegmentation', customerSegmentationSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#hourlyDistribution', hourlyDistributionSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+        vegaEmbed('#correlationMatrix', correlationMatrixSpec, {actions: {export: true, source: false, compiled: false, editor: false}});
+
+        // Filter functionality
+        document.getElementById('timeFilter').addEventListener('change', function(e) {
+            console.log('Time period changed to:', e.target.value);
+            // In real implementation, this would re-fetch data and update charts
+        });
+
+        document.getElementById('regionFilter').addEventListener('change', function(e) {
+            console.log('Region filter changed to:', e.target.value);
+        });
+
+        document.getElementById('categoryFilter').addEventListener('change', function(e) {
+            console.log('Category filter changed to:', e.target.value);
+        });
     </script>
-
 </body>
-
 </html>
